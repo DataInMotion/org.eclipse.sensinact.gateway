@@ -27,6 +27,8 @@ import java.util.function.Supplier;
 
 import org.eclipse.sensinact.core.notification.ResourceDataNotification;
 import org.eclipse.sensinact.core.twin.TimedValue;
+import org.eclipse.sensinact.gateway.geojson.Feature;
+import org.eclipse.sensinact.gateway.geojson.FeatureCollection;
 import org.eclipse.sensinact.gateway.geojson.GeoJsonObject;
 import org.eclipse.sensinact.gateway.southbound.history.api.HistoricalQueries;
 import org.osgi.service.transaction.control.TransactionControl;
@@ -149,7 +151,17 @@ public class TimescaleDatabaseWorker implements TypedEventHandler<ResourceDataNo
                 tmpValue = "{\"type\":\"Point\", \"coordinates\":[]}";
             } else if (event.newValue instanceof GeoJsonObject) {
                 try {
-                    tmpValue = mapper.writeValueAsString(event.newValue);
+                    if(event.newValue instanceof FeatureCollection) {
+                        FeatureCollection featureCollection = (FeatureCollection) event.newValue;
+                        List<Feature> features = featureCollection.features;
+                        if(features.isEmpty() || features.get(0).geometry == null) {
+                            tmpValue = "{\"type\":\"Point\", \"coordinates\":[]}";
+                        } else {
+                            tmpValue = mapper.writeValueAsString(features.get(0).geometry);
+                        }
+                    } else {
+                        tmpValue = mapper.writeValueAsString(event.newValue);
+                    }
                 } catch (JsonProcessingException e) {
                     if (logger.isWarnEnabled()) {
                         logger.warn("Unable to serialize geographic data for {}", topic, e);
